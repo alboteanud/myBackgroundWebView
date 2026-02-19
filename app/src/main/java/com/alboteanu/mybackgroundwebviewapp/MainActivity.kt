@@ -17,14 +17,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         webView = WebView(this)
         setContentView(webView)
-
         setupWebView()
         webView.loadUrl("https://m.youtube.com")
-
-        // 1. Check and request notification permissions
         checkNotificationPermission()
     }
 
