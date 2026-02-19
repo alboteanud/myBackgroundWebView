@@ -34,19 +34,14 @@ class MainActivity : AppCompatActivity() {
                 super.onWindowVisibilityChanged(View.VISIBLE)
             }
         }.apply {
-            // Ne asigurăm că ocupă tot spațiul din FrameLayout
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
 
-        // 3. Adăugăm WebView-ul modificat în container
         rootView.addView(webView)
-
-        // 4. Setăm layout-ul principal
         setContentView(rootView)
-//        setContentView(webView)
 
         setupWebView()
         webView.loadUrl("https://m.youtube.com")
@@ -66,35 +61,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupWebView() {
         webView.webChromeClient = WebChromeClient()
+        webView.webViewClient = WebViewClient()
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
             userAgentString =
                 "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
-        }
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                val js = """
-            javascript:(function() {
-                Object.defineProperty(document, 'visibilityState', {
-                    get: function() { return 'visible'; }
-                });
-                Object.defineProperty(document, 'hidden', {
-                    get: function() { return false; }
-                });
-                document.addEventListener('visibilitychange', function(e) {
-                    e.stopImmediatePropagation();
-                }, true);
-                setInterval(function() {
-                    var v = document.querySelector('video');
-                    if(v && v.paused) { v.play(); }
-                }, 2000);
-            })();
-        """.trimIndent()
-                view?.evaluateJavascript(js, null)
-            }
         }
     }
 
