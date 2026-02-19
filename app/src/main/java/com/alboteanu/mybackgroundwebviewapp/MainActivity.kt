@@ -47,8 +47,6 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-
-                // Injectăm JS pentru a suprascrie Page Visibility API
                 val js = """
             javascript:(function() {
                 Object.defineProperty(document, 'visibilityState', {
@@ -60,33 +58,25 @@ class MainActivity : AppCompatActivity() {
                 document.addEventListener('visibilitychange', function(e) {
                     e.stopImmediatePropagation();
                 }, true);
-                
-                // Opțional: forțează playerul să ruleze continuu
                 setInterval(function() {
                     var v = document.querySelector('video');
                     if(v && v.paused) { v.play(); }
                 }, 2000);
             })();
         """.trimIndent()
-
                 view?.evaluateJavascript(js, null)
             }
         }
-
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // 2. We only start the service when the user leaves the app
         val serviceIntent = Intent(this, KeepAliveService::class.java)
-
-        // Use ContextCompat to safely start it across different Android versions
         ContextCompat.startForegroundService(this, serviceIntent)
     }
 
     override fun onResume() {
         super.onResume()
-        // 3. Stop it when they come back
         stopService(Intent(this, KeepAliveService::class.java))
     }
 
