@@ -4,9 +4,11 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -17,8 +19,35 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        webView = WebView(this)
-        setContentView(webView)
+
+        // 1. Containerul de bază care rezolvă ceasul (Edge-to-Edge)
+        val rootView = FrameLayout(this).apply {
+            setBackgroundColor(android.graphics.Color.BLACK)
+            fitsSystemWindows = true
+        }
+
+        // 2. CREĂM UN WEBVIEW "HACKUIT"
+        webView = object : WebView(this) {
+            override fun onWindowVisibilityChanged(visibility: Int) {
+                // Indiferent ce zice sistemul, noi mințim Chromium că aplicația e mereu pe ecran (VISIBLE).
+                // Astfel, decodorul video nu va fi închis niciodată când dai Home!
+                super.onWindowVisibilityChanged(View.VISIBLE)
+            }
+        }.apply {
+            // Ne asigurăm că ocupă tot spațiul din FrameLayout
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // 3. Adăugăm WebView-ul modificat în container
+        rootView.addView(webView)
+
+        // 4. Setăm layout-ul principal
+        setContentView(rootView)
+//        setContentView(webView)
+
         setupWebView()
         webView.loadUrl("https://m.youtube.com")
         checkNotificationPermission()
