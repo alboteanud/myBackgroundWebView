@@ -17,6 +17,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.OnBackPressedCallback
 import android.webkit.JavascriptInterface
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -70,6 +73,31 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+
+        // Înregistrăm receiver-ul. Pentru Android 14+ (minSdk 34), RECEIVER_NOT_EXPORTED este obligatoriu.
+        registerReceiver(
+            stopPlaybackReceiver,
+            IntentFilter("com.alboteanu.action.STOP_PLAYBACK"),
+            Context.RECEIVER_NOT_EXPORTED
+        )
+
+    } // end of onCreate()
+
+    // Ascultă butonul "Stop" de pe notificare
+    private val stopPlaybackReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.alboteanu.action.STOP_PLAYBACK") {
+                // 1. Oprim videoclipul direct în pagina web (JavaScript)
+                webView.evaluateJavascript(
+                    "var video = document.querySelector('video'); if(video) video.pause();",
+                    null
+                )
+
+                // 2. Închidem serviciul de fundal (Notificarea va dispărea automat)
+                val serviceIntent = Intent(this@MainActivity, KeepAliveService::class.java)
+                stopService(serviceIntent)
+            }
+        }
     }
 
     private fun checkNotificationPermission() {
@@ -203,6 +231,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopService(Intent(this, KeepAliveService::class.java))
+        unregisterReceiver(stopPlaybackReceiver) // <-- NOU: Oprim ascultarea
         webView.destroy()
         super.onDestroy()
     }

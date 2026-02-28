@@ -14,21 +14,16 @@ import androidx.core.app.NotificationCompat
 
 class KeepAliveService : Service() {
 
-    // Adăugăm variabila pentru WakeLock
     private var wakeLock: PowerManager.WakeLock? = null
     private val CHANNEL_ID = "webview_channel"
 
     override fun onCreate() {
         super.onCreate()
-
-        // 1. ACHIZIȚIONĂM WAKELOCK-UL
-        // Asta previne intrarea procesorului în Deep Sleep când ecranul e stins
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "MyApp::WebViewBackgroundAudio"
         )
-        // Setăm un timeout de siguranță de 2 ore pentru a nu consuma bateria la infinit dacă aplicația "crapă"
         wakeLock?.acquire(2 * 60 * 60 * 1000L)
     }
 
@@ -46,12 +41,27 @@ class KeepAliveService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // --- NOU: CREĂM INTENT-UL PENTRU BUTONUL DE STOP ---
+        val stopIntent = Intent("com.alboteanu.action.STOP_PLAYBACK").apply {
+            setPackage(packageName) // Securitate: trimitem doar către aplicația noastră
+        }
+        val pendingStopIntent = PendingIntent.getBroadcast(
+            this,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // ----------------------------------------------------
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("YouTube rulează în fundal")
-            .setContentText("Atinge pentru a deschide aplicația")
-            .setSmallIcon(android.R.drawable.ic_media_play) // Asigură-te că ai iconița asta sau pune-o pe a ta
+//            .setContentText("Atinge pentru a deschide aplicația")
+            .setSmallIcon(android.R.drawable.ic_media_play)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
+            // --- NOU: ADĂUGĂM BUTONUL PE NOTIFICARE ---
+            // Primul parametru e iconița (am folosit una nativă Android pt pauză/stop)
+            .addAction(android.R.drawable.ic_media_pause, "Stop Video", pendingStopIntent)
             .build()
 
         startForeground(
@@ -64,8 +74,6 @@ class KeepAliveService : Service() {
     }
 
     override fun onDestroy() {
-        // 3. ELIBERĂM WAKELOCK-UL OBLIGATORIU
-        // Dacă nu facem asta, telefonul utilizatorului nu va mai intra niciodată în sleep și bateria se va descărca rapid
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
