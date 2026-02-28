@@ -1,4 +1,5 @@
 package com.alboteanu.mybackgroundwebviewapp
+
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -74,19 +75,16 @@ class KeepAliveService : Service() {
     }
 
     private fun createNotificationChannel() {
-        // Canalele de notificare sunt necesare doar de la Android 8 (Oreo) în sus
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelName = "Background Playback"
-            val importance = NotificationManager.IMPORTANCE_LOW
-
-            val channel = NotificationChannel(CHANNEL_ID, channelName, importance).apply {
-                description = "Menține redarea activă în fundal"
-            }
-
-            val notificationManager: NotificationManager =
-                getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Background Playback",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Menține redarea activă în fundal"
         }
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
 
     override fun onBind(intent: Intent?): IBinder? {

@@ -16,6 +16,11 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.OnBackPressedCallback
+import android.media.AudioManager
+import android.os.Process
+import android.content.Context
+import android.media.AudioPlaybackConfiguration
+import android.util.Log
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -27,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Containerul de bază care rezolvă ceasul (Edge-to-Edge)
+        // remove Edge-to-Edge
         rootView = FrameLayout(this).apply {
             setBackgroundColor(android.graphics.Color.BLACK)
             fitsSystemWindows = true
@@ -153,10 +158,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun isAppPlayingAudio(): Boolean {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        // Returnează 'true' dacă sistemul redă ceva pe canalul media în acest moment.
+        val isPlaying = audioManager.isMusicActive
+        Log.d("MainActivity", "isAppPlayingAudio: $isPlaying")
+        return isPlaying
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        val serviceIntent = Intent(this, KeepAliveService::class.java)
-        ContextCompat.startForegroundService(this, serviceIntent)
+
+        if (isAppPlayingAudio()) {
+            val serviceIntent = Intent(this, KeepAliveService::class.java)
+            startForegroundService(serviceIntent) // ContextCompat nu mai e strict necesar la minSdk 34
+        }
     }
 
     override fun onResume() {
