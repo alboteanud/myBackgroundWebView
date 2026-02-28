@@ -16,11 +16,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.OnBackPressedCallback
-import android.media.AudioManager
-import android.os.Process
-import android.content.Context
-import android.media.AudioPlaybackConfiguration
-import android.util.Log
+import android.webkit.JavascriptInterface
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -28,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rootView: FrameLayout
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private val jsInterface = YouTubeWebInterface()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,8 +85,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
-        webView.webViewClient = WebViewClient()
-
         // Custom WebChromeClient for Full-Screen Video
         webView.webChromeClient = object : WebChromeClient() {
 
@@ -156,23 +151,45 @@ class MainActivity : AppCompatActivity() {
             userAgentString =
                 "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
         }
-    }
 
-    private fun isAppPlayingAudio(): Boolean {
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        // 1. Adăugăm interfața în WebView
+        webView.addJavascriptInterface(jsInterface, "AndroidJS")
 
-        // Returnează 'true' dacă sistemul redă ceva pe canalul media în acest moment.
-        val isPlaying = audioManager.isMusicActive
-        Log.d("MainActivity", "isAppPlayingAudio: $isPlaying")
-        return isPlaying
+        webView.webViewClient = object : WebViewClient() {
+            // 2. Când pagina se încarcă, injectăm un script care verifică player-ul constant
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+
+                val script = """
+                setInterval(function() {
+                    let video = document.querySelector('video');
+                    let isPlaying = false;
+                    let isMuted = true;
+                    let vol = 0.0;
+                    
+                    if (video) {
+                        isPlaying = !video.paused;
+                        isMuted = video.muted;
+                        vol = video.volume;
+                    }
+                    
+                    // Apelăm funcția Kotlin!
+                    AndroidJS.updateAudioState(isPlaying, isMuted, vol);
+                }, 1000); // Verifică din secundă în secundă
+            """.trimIndent()
+
+                view?.evaluateJavascript(script, null)
+            }
+        }
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        if (isAppPlayingAudio()) {
+        // Verificăm variabila noastră care știe adevărul absolut despre player-ul web
+        if (jsInterface.isActuallyPlayingAudio) {
             val serviceIntent = Intent(this, KeepAliveService::class.java)
-            startForegroundService(serviceIntent) // ContextCompat nu mai e strict necesar la minSdk 34
+            startForegroundService(serviceIntent)
         }
     }
 
@@ -185,6 +202,18 @@ class MainActivity : AppCompatActivity() {
         stopService(Intent(this, KeepAliveService::class.java))
         webView.destroy()
         super.onDestroy()
+    }
+
+    // Această clasă va reține starea reală a player-ului web
+    class YouTubeWebInterface {
+        var isActuallyPlayingAudio: Boolean = false
+
+        // Anotația asta permite codului JavaScript din pagină să apeleze această funcție Kotlin
+        @JavascriptInterface
+        fun updateAudioState(isPlaying: Boolean, isMuted: Boolean, volume: Double) {
+            // Redă sunet doar dacă videoclipul rulează, NU e pe mute, și volumul e mai mare de 0
+            isActuallyPlayingAudio = isPlaying && !isMuted && volume > 0.0
+        }
     }
 
 }
