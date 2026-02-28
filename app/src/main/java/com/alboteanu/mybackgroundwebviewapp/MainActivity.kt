@@ -44,8 +44,7 @@ class MainActivity : AppCompatActivity() {
             }
         }.apply {
             layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
 
@@ -107,8 +106,7 @@ class MainActivity : AppCompatActivity() {
                 // 2. Add the custom video view to our root FrameLayout
                 rootView.addView(
                     customView, FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
                     )
                 )
 
@@ -186,7 +184,15 @@ class MainActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        // Verificăm variabila noastră care știe adevărul absolut despre player-ul web
+        // 1. PASUL CRITIC: Dacă suntem în Fullscreen, ieșim forțat din el
+        // înainte ca aplicația să intre efectiv în fundal.
+        if (customView != null) {
+            // Asta apelează funcția ta onHideCustomView() din WebChromeClient
+            // care ascunde video-ul mare, restaurează WebView-ul normal și anunță YouTube-ul.
+            webView.webChromeClient?.onHideCustomView()
+        }
+
+        // 2. Verificăm variabila noastră care știe adevărul absolut despre player-ul web
         if (jsInterface.isActuallyPlayingAudio) {
             val serviceIntent = Intent(this, KeepAliveService::class.java)
             startForegroundService(serviceIntent)
