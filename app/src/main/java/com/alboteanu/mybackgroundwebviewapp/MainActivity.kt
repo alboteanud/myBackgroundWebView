@@ -12,10 +12,10 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.activity.OnBackPressedCallback
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -53,6 +53,22 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("https://m.youtube.com")
         checkNotificationPermission()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (customView != null) {
+                    // 1. If we are in full-screen video, exit full-screen
+                    webView.webChromeClient?.onHideCustomView()
+                } else if (webView.canGoBack()) {
+                    // 2. If the WebView has history, go back one page
+                    webView.goBack()
+                } else {
+                    // 3. Otherwise, let the system handle the back button (close app)
+                    isEnabled = false // Temporarily disable this custom callback
+                    onBackPressedDispatcher.onBackPressed() // Trigger the default back action
+                }
+            }
+        })
     }
 
     private fun checkNotificationPermission() {
@@ -65,20 +81,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
-
-    private fun setupWebView_0() {
-        webView.webChromeClient = WebChromeClient()
-        webView.webViewClient = WebViewClient()
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            mediaPlaybackRequiresUserGesture = false
-            userAgentString =
-                "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
-        }
-    }
-
-
 
     private fun setupWebView() {
         webView.webViewClient = WebViewClient()
@@ -111,8 +113,10 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 // 3. (Optional but recommended) Hide system bars for a true full-screen experience
-                val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-                windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                val windowInsetsController =
+                    WindowCompat.getInsetsController(window, window.decorView)
+                windowInsetsController.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
             }
 
@@ -134,7 +138,8 @@ class MainActivity : AppCompatActivity() {
                 customViewCallback = null
 
                 // 4. Restore system bars
-                val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+                val windowInsetsController =
+                    WindowCompat.getInsetsController(window, window.decorView)
                 windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
             }
         }
@@ -163,18 +168,6 @@ class MainActivity : AppCompatActivity() {
         stopService(Intent(this, KeepAliveService::class.java))
         webView.destroy()
         super.onDestroy()
-    }
-
-    override fun onBackPressed() {
-        // If we are in full screen, exit full screen first
-        if (customView != null) {
-            webView.webChromeClient?.onHideCustomView()
-        } else if (webView.canGoBack()) {
-            // If WebView can go back a page, do that
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
     }
 
 }
